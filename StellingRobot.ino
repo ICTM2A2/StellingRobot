@@ -1,5 +1,3 @@
-const bool DEBUG = true;
-
 // Arduino pins for the shift register
 #define MOTORLATCH 12
 #define MOTORCLK 4
@@ -36,11 +34,17 @@ const int POT_PIN_Y = A1;
 #define BRAKE 3
 #define RELEASE 4
 
-const int xSpeed = 125;
+const int xSpeed = 150;
 const int ySpeed = 255;
-const int zSpeed = 100;
+const int zSpeed = 115;
 
 const int margin = 5;
+
+//@ Configs
+const bool CALIBRATE = false;
+const bool DEBUG = false;
+const int orderLength = 25;
+const int carryCapacity = 3;
 
 void setup()
 {
@@ -51,59 +55,75 @@ void setup()
   // Start "station"
   Serial.println("Resetting location...");
   home();
-  Serial.println("Online!");
+  Serial.println("Online.");
 }
 
 void loop()
 {
-  // //* Log X & Y position
-  // Serial.print("x:");
-  // Serial.println(analogRead(POT_PIN_X));
-  // Serial.print("y:");
-  // Serial.println(analogRead(POT_PIN_Y));
-  // delay(500);
+  if (CALIBRATE)
+  {
+    int x = analogRead(POT_PIN_X);
+    int y = analogRead(POT_PIN_Y);
+
+    //* Log X & Y position
+    Serial.print("Current pos [x:");
+    Serial.print(x);
+    Serial.print(" y:");
+    Serial.print(y);
+    Serial.println("]");
+
+    delay(500);
+  }
 
   //? =========================================================
   //? || Coordinates                                         ||
   //? =========================================================
 
-  if (Serial.available() > 0)
+  else if (Serial.available() > 0)
   {
     String input = Serial.readString();
 
-    int x1 = charToCoord(input[0]);
-    int y1 = charToCoord(input[2]);
-    int x2 = charToCoord(input[4]);
-    int y2 = charToCoord(input[6]);
-    int x3 = charToCoord(input[8]);
-    int y3 = charToCoord(input[10]);
+    int coords[orderLength][2] = {};
 
-    int coords[3][2] = {{x1, y1}, {x2, y2}, {x3, y3}};
+    int pos = 0;
+    for (int i = 0; i < orderLength; i++)
+    {
+      for (int j = 0; j < 2; j++)
+      {
+        coords[i][j] = charToCoord(input[pos]);
+        pos += 2;
+      }
+    }
 
-    // move(2, 2);
-    // grab();
-    // home();
-    // delay(1000);
-    // move(2, 2);
-    // put();
-
-    for (int i = 0; i < 3; i++)
+    int count = 0;
+    for (int i = 0; i < 25; i++)
     {
       int x = coords[i][0];
       int y = coords[i][1];
 
-      if (x != 5 && y != 5) // For when there's not a full set
+      if (x != 5 && y != 5)
       {
         move(x, y);
         grab();
+        Serial.println("Moved");
+        count++;
+      }
+
+      if (count == carryCapacity)
+      {
+        drop();
+        count = 0;
       }
     }
 
-    drop();
+    if (count > 0)
+    {
+      drop();
+    }
+    
+    Serial.println("Done!");
 
     home();
-
-    Serial.println("Done!");
   }
 }
 
@@ -128,19 +148,13 @@ int charToCoord(char in)
 
 void move(int x, int y)
 {
-  if (y == -1)
-  {
-    y = 0;
-  }
-
   if (DEBUG)
   {
-
-    Serial.print("Moving to ");
+    Serial.print("Picking up [x:");
     Serial.print(x);
-    Serial.print(",");
+    Serial.print(" y:");
     Serial.print(y);
-    Serial.println("");
+    Serial.println("]");
   }
 
   //? =========================================================
@@ -153,7 +167,7 @@ void move(int x, int y)
   switch (x)
   {
   case 0:
-    destX = 854; //* value
+    destX = 856; //* value
     break;
   case 1:
     destX = 700; //* value
@@ -162,7 +176,7 @@ void move(int x, int y)
     destX = 554; //* value
     break;
   case 3:
-    destX = 405; //* value
+    destX = 410; //* value
     break;
   case 4:
     destX = 258; //* value
@@ -190,10 +204,10 @@ void move(int x, int y)
     destY = 815; //* value
     break;
   case -1: // drop correctie
-    destY = 135;
+    destY = 320;
     break;
   case -2: // drop height
-    destY = 305;
+    destY = 460;
     break;
   default:
     destY = 0; //* value
@@ -310,7 +324,7 @@ void grab()
 {
   // forwards
   motor(2, FORWARD, zSpeed);
-  delay(600);
+  delay(300);
   motor(2, BRAKE, 0);
 
   delay(100);
@@ -324,7 +338,7 @@ void grab()
 
   // back
   motor(2, BACKWARD, zSpeed);
-  delay(600);
+  delay(420);
   motor(2, BRAKE, 0);
 }
 
@@ -364,6 +378,10 @@ void drop()
   motor(2, FORWARD, zSpeed);
   delay(200);
   motor(2, BRAKE, 0);
+  // Retract arm
+  motor(2, BACKWARD, zSpeed);
+  delay(220);
+  motor(2, BRAKE, 0);
 
   move(-1, -2);
 
@@ -377,7 +395,7 @@ void drop()
   delay(1000);
   motor(2, BRAKE, 0);
 
-  move(-1, 0);
+  move(-1, -1);
 
   // Retract arm
   motor(2, BACKWARD, zSpeed);
