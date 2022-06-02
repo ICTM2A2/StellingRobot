@@ -244,12 +244,15 @@ void move(int x, int y)
       }
       else
       {
-        while (analogRead(POT_PIN_X) > destX - 10)
+        while (analogRead(POT_PIN_X) > destX - 5)
         {
           motor(3, FORWARD, xSpeed);
           delay(5);
           motor(3, BRAKE, 0);
         }
+
+        delay(500);
+
         while (analogRead(POT_PIN_X) < destX)
         {
           motor(3, BACKWARD, xSpeed);
@@ -324,7 +327,7 @@ void grab()
 {
   // forwards
   motor(2, FORWARD, zSpeed);
-  delay(300);
+  delay(200);
   motor(2, BRAKE, 0);
 
   delay(100);
@@ -338,7 +341,7 @@ void grab()
 
   // back
   motor(2, BACKWARD, zSpeed);
-  delay(420);
+  delay(220);
   motor(2, BRAKE, 0);
 }
 
